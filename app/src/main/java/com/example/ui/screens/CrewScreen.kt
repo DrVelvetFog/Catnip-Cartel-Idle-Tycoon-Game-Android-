@@ -43,6 +43,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.pow
+import kotlin.math.roundToLong
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -245,17 +249,21 @@ fun OperativeCard(
   onHire: (Int) -> Unit,
   onUnlockContract: () -> Unit
 ) {
+  // Geometric pricing: next unit costs base * 1.6^owned (matches GameRepository)
+  val growth = 1.6
+  val unitCost = (operative.baseCost * growth.pow(operative.owned)).roundToLong()
+  fun bulkPrice(n: Int): Long =
+    (unitCost * (growth.pow(n) - 1.0) / (growth - 1.0)).roundToLong().coerceAtLeast(0L)
   val multiplierCount = if (buyMultiplier == 9999) {
-    // MAX calculation
-    val maxAffordable = (currentNipBalance / operative.baseCost).toInt().coerceAtLeast(1)
-    maxAffordable
+    // MAX: largest n with bulkPrice(n) <= balance
+    if (currentNipBalance < unitCost) 0
+    else floor(ln(1.0 + currentNipBalance * (growth - 1.0) / unitCost) / ln(growth)).toInt().coerceAtLeast(0)
   } else {
     buyMultiplier
   }
 
-  val singleCost = operative.baseCost
-  val bulkCost = operative.baseCost * 10
-  val multCost = operative.baseCost * multiplierCount
+  val bulkCost = bulkPrice(10)
+  val multCost = bulkPrice(multiplierCount)
 
   Card(
     modifier = Modifier
