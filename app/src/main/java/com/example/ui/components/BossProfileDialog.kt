@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
@@ -26,6 +27,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,7 +54,8 @@ import com.example.ui.theme.SurfaceContainerLowest
 @Composable
 fun BossProfileDialog(
   state: CartelGameState,
-  onDismiss: () -> Unit
+  onDismiss: () -> Unit,
+  onHowToPlay: () -> Unit = {}
 ) {
   Dialog(onDismissRequest = onDismiss) {
     Card(
@@ -194,6 +197,33 @@ fun BossProfileDialog(
             color = PrimaryNeon,
             fontSize = 11.sp,
             modifier = Modifier.padding(10.dp)
+          )
+        }
+
+        OutlinedButton(
+          onClick = {
+            onDismiss()
+            onHowToPlay()
+          },
+          modifier = Modifier
+            .fillMaxWidth()
+            .testTag("how_to_play_button"),
+          shape = RoundedCornerShape(8.dp),
+          colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = SecondaryGold
+          ),
+          border = androidx.compose.foundation.BorderStroke(1.dp, SecondaryGold.copy(alpha = 0.6f))
+        ) {
+          Icon(
+            imageVector = Icons.Default.HelpOutline,
+            contentDescription = null,
+            tint = SecondaryGold,
+            modifier = Modifier.size(16.dp)
+          )
+          Spacer(modifier = Modifier.width(6.dp))
+          Text(
+            text = "HOW TO PLAY",
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black)
           )
         }
 

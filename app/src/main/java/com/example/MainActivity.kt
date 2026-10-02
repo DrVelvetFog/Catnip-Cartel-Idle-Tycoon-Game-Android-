@@ -56,6 +56,7 @@ import com.example.ui.screens.HustleScreen
 import com.example.ui.screens.LabsScreen
 import com.example.ui.screens.RaidDefenseScreen
 import com.example.ui.screens.TurfScreen
+import com.example.ui.screens.TutorialScreen
 import com.example.ui.theme.CatnipCartelTheme
 import com.example.ui.theme.PrimaryNeon
 import com.example.ui.theme.SurfaceContainerLowest
@@ -81,6 +82,9 @@ class MainActivity : ComponentActivity() {
 fun CatnipCartelApp(repository: GameRepository) {
   val context = LocalContext.current
   val state by repository.state.collectAsStateWithLifecycle()
+
+  val prefs = remember { context.getSharedPreferences("catnip_cartel_save", Context.MODE_PRIVATE) }
+  var showTutorial by remember { mutableStateOf(!prefs.getBoolean("tutorial_seen", false)) }
 
   var currentTab by remember { mutableStateOf(CartelTab.HUSTLE) }
   var isRaidScreenOpen by remember { mutableStateOf(false) }
@@ -114,9 +118,12 @@ fun CatnipCartelApp(repository: GameRepository) {
     }
   }
 
-  // Handle back press if inside subscreen
-  BackHandler(enabled = isRaidScreenOpen || isProfileDialogOpen) {
-    if (isProfileDialogOpen) {
+  // Handle back press if inside subscreen or tutorial
+  BackHandler(enabled = showTutorial || isRaidScreenOpen || isProfileDialogOpen) {
+    if (showTutorial) {
+      prefs.edit().putBoolean("tutorial_seen", true).apply()
+      showTutorial = false
+    } else if (isProfileDialogOpen) {
       isProfileDialogOpen = false
     } else if (isRaidScreenOpen) {
       isRaidScreenOpen = false
@@ -124,7 +131,16 @@ fun CatnipCartelApp(repository: GameRepository) {
     }
   }
 
-  Box(modifier = Modifier.fillMaxSize()) {
+  if (showTutorial) {
+    TutorialScreen(
+      onFinishTutorial = {
+        triggerHaptic()
+        prefs.edit().putBoolean("tutorial_seen", true).apply()
+        showTutorial = false
+      }
+    )
+  } else {
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
       modifier = Modifier.fillMaxSize(),
       topBar = {
@@ -261,6 +277,7 @@ fun CatnipCartelApp(repository: GameRepository) {
                 onResetGame = {
                   triggerHaptic()
                   repository.resetGame()
+                  showTutorial = true
                 }
               )
             }
@@ -311,8 +328,13 @@ fun CatnipCartelApp(repository: GameRepository) {
     if (isProfileDialogOpen) {
       BossProfileDialog(
         state = state,
-        onDismiss = { isProfileDialogOpen = false }
+        onDismiss = { isProfileDialogOpen = false },
+        onHowToPlay = {
+          isProfileDialogOpen = false
+          showTutorial = true
+        }
       )
     }
   }
+}
 }

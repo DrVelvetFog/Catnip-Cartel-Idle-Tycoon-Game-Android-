@@ -56,5 +56,21 @@ class ExampleRobolectricTest {
     assertEquals(1, state.bossLevel)
     assertEquals("STREET ROOKIE", state.bossTitle)
   }
+
+  @Test
+  fun `tutorial seen flag defaults to false and persists when set`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val prefs = context.getSharedPreferences("catnip_cartel_save", Context.MODE_PRIVATE)
+
+    // Clear any test residue
+    prefs.edit().remove("tutorial_seen").apply()
+    val initialSeen = prefs.getBoolean("tutorial_seen", false)
+    assertEquals(false, initialSeen)
+
+    // Mark tutorial seen
+    prefs.edit().putBoolean("tutorial_seen", true).apply()
+    val afterSeen = prefs.getBoolean("tutorial_seen", false)
+    assertEquals(true, afterSeen)
+  }
 }
 
