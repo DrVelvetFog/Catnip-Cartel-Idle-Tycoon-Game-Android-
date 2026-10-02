@@ -7,9 +7,10 @@ import android.media.MediaPlayer
  * Background music for Catnip Cartel Tycoon.
  *
  * Track slots (all optional except the title theme):
- *  - title   -> R.raw.catnip_cartel   (ships with the app: the vocal theme song)
- *  - loop    -> res/raw/gameplay_loop.m4a  (future: seamless instrumental loop)
- *  - raid    -> res/raw/raid_stinger.m4a   (future: 30s Animal Control tension cue)
+ *  - title    -> R.raw.catnip_cartel   (ships with the app: the vocal theme song)
+ *  - loop     -> res/raw/gameplay_loop.m4a  (seamless instrumental loop)
+ *  - raid     -> res/raw/raid_stinger.m4a   (30s Animal Control tension cue)
+ *  - fanfare  -> R.raw.trunk_bump      (ships with the app: Nine Lives prestige fanfare)
  *
  * Missing future tracks are resolved to 0 and skipped gracefully, so dropping
  * a new file into res/raw is all it takes to activate that slot.
@@ -30,7 +31,7 @@ class MusicManager(private val context: Context) {
     return if (loop != 0) loop else com.example.R.raw.catnip_cartel
   }
 
-  private fun play(resId: Int, loop: Boolean, volume: Float = 0.55f) {
+  private fun play(resId: Int, loop: Boolean, volume: Float = 0.55f, onDone: (() -> Unit)? = null) {
     if (!enabled || resId == 0) return
     if (currentResId == resId && player?.isPlaying == true) return
     stop()
@@ -38,6 +39,7 @@ class MusicManager(private val context: Context) {
       player = MediaPlayer.create(context, resId)?.apply {
         isLooping = loop
         setVolume(volume, volume)
+        if (!loop) setOnCompletionListener { onDone?.invoke() }
         start()
       }
       currentResId = resId
@@ -57,6 +59,12 @@ class MusicManager(private val context: Context) {
   fun playRaidStinger() {
     val stinger = resId("raid_stinger")
     if (stinger != 0) play(stinger, loop = false, volume = 0.7f)
+  }
+
+  /** Prestige fanfare: TRUNK BUMP plays once when a Nine Lives prestige lands. */
+  fun playPrestigeFanfare() {
+    val fanfare = resId("trunk_bump")
+    if (fanfare != 0) play(fanfare, loop = false, volume = 0.8f, onDone = { playGameplay() })
   }
 
   /** Back to the loop after a raid ends. */
