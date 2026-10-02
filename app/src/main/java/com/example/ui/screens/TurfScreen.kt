@@ -814,7 +814,7 @@ fun DistrictCard(
               )
             }
             Text(
-              text = "+${district.nipPerSec} NIP/s",
+              text = "${district.multiplierLabel} EARNINGS",
               fontFamily = FontFamily.Monospace,
               fontWeight = FontWeight.Bold,
               color = MaterialTheme.colorScheme.primary,

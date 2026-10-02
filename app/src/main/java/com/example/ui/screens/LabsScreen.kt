@@ -419,7 +419,7 @@ fun FormulaCard(
                 )
               }
               Text(
-                text = "+${formula.baseBonus} Base",
+                text = "One-time purchase",
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 10.sp
