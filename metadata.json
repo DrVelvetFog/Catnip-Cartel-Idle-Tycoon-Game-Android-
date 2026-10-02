@@ -1,0 +1,6 @@
+{
+  "name": "Catnip Cartel",
+  "description": "Feline gangster idle tycoon clicker with 90s hip-hop flair. Tap to shake down the hood, recruit operatives, expand turf, upgrade illicit catnip batches, and defend against animal control raids.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
