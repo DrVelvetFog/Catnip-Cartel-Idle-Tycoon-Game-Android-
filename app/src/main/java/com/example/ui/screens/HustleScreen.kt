@@ -16,6 +16,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -111,6 +112,7 @@ fun HustleScreen(
   onAdDropClick: () -> Unit,
   onOverdriveClick: () -> Unit,
   onGoToRaid: () -> Unit,
+  onBoomboxClick: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val scrollState = rememberScrollState()
@@ -151,12 +153,13 @@ fun HustleScreen(
     }
   }
 
-  // Cleanup particles
-  LaunchedEffect(particles.size) {
-    if (particles.isNotEmpty()) {
-      delay(800)
+  // Cleanup particles safely based on age
+  LaunchedEffect(Unit) {
+    while (true) {
+      delay(200)
       if (particles.isNotEmpty()) {
-        particles.removeAt(0)
+        val now = SystemClock.uptimeMillis()
+        particles.removeAll { now - it.id > 900 }
       }
     }
   }
@@ -441,19 +444,19 @@ fun HustleScreen(
                 Spacer(modifier = Modifier.width(6.dp))
                 Surface(
                   shape = RoundedCornerShape(10.dp),
-                  color = SecondaryGold.copy(alpha = 0.2f)
+                  color = if (state.isBoomboxBoostActive) SecondaryGold.copy(alpha = 0.2f) else PrimaryNeon.copy(alpha = 0.2f)
                 ) {
                   Text(
-                    text = "2X ACTIVE",
+                    text = if (state.isBoomboxBoostActive) "2X ACTIVE" else "2X READY",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = SecondaryGold,
+                    color = if (state.isBoomboxBoostActive) SecondaryGold else PrimaryNeon,
                     fontSize = 9.sp,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                   )
                 }
               }
               Text(
-                text = "Tape deck spinning 90s basslines",
+                text = if (state.isBoomboxBoostActive) "Tape deck spinning 90s basslines" else "Drop beat for 30m 2x production boost",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp
@@ -461,31 +464,49 @@ fun HustleScreen(
             }
           }
 
-          // Timer pill
-          Surface(
-            shape = RoundedCornerShape(6.dp),
-            color = SurfaceContainerLowest
-          ) {
-            Row(
-              modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-              verticalAlignment = Alignment.CenterVertically
+          if (state.isBoomboxBoostActive) {
+            // Timer pill
+            Surface(
+              shape = RoundedCornerShape(6.dp),
+              color = SurfaceContainerLowest
             ) {
-              Icon(
-                imageVector = Icons.Default.Timer,
-                contentDescription = null,
-                tint = SecondaryGold,
-                modifier = Modifier.size(13.dp)
-              )
-              Spacer(modifier = Modifier.width(3.dp))
-              val hours = state.boomboxRemainingSeconds / 3600
-              val mins = (state.boomboxRemainingSeconds % 3600) / 60
-              val secs = state.boomboxRemainingSeconds % 60
+              Row(
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Icon(
+                  imageVector = Icons.Default.Timer,
+                  contentDescription = null,
+                  tint = SecondaryGold,
+                  modifier = Modifier.size(13.dp)
+                )
+                Spacer(modifier = Modifier.width(3.dp))
+                val hours = state.boomboxRemainingSeconds / 3600
+                val mins = (state.boomboxRemainingSeconds % 3600) / 60
+                val secs = state.boomboxRemainingSeconds % 60
+                Text(
+                  text = String.format(Locale.US, "%02d:%02d:%02d", hours, mins, secs),
+                  fontFamily = FontFamily.Monospace,
+                  fontWeight = FontWeight.Bold,
+                  fontSize = 11.sp,
+                  color = SecondaryGold
+                )
+              }
+            }
+          } else {
+            Button(
+              onClick = onBoomboxClick,
+              shape = RoundedCornerShape(6.dp),
+              colors = ButtonDefaults.buttonColors(containerColor = SecondaryGold),
+              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+              modifier = Modifier.testTag("activate_boombox_button")
+            ) {
               Text(
-                text = String.format(Locale.US, "%02d:%02d:%02d", hours, mins, secs),
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
+                text = "ACTIVATE",
+                fontFamily = FontFamily.SansSerif,
+                fontWeight = FontWeight.Black,
                 fontSize = 11.sp,
-                color = SecondaryGold
+                color = OnSecondary
               )
             }
           }

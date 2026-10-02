@@ -197,6 +197,10 @@ fun CatnipCartelApp(repository: GameRepository) {
                 onGoToRaid = {
                   repository.triggerRaid()
                   isRaidScreenOpen = true
+                },
+                onBoomboxClick = {
+                  triggerHaptic()
+                  repository.activateBoomboxBoost()
                 }
               )
             }
@@ -253,6 +257,10 @@ fun CatnipCartelApp(repository: GameRepository) {
                 onPrestigeLaunder = {
                   triggerHaptic()
                   repository.claimAdDrop()
+                },
+                onResetGame = {
+                  triggerHaptic()
+                  repository.resetGame()
                 }
               )
             }

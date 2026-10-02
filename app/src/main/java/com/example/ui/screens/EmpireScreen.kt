@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.FormatPaint
@@ -30,16 +31,19 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -75,11 +79,13 @@ fun EmpireScreen(
   passiveRate: Double,
   tapPower: Long,
   onPrestigeLaunder: () -> Unit,
+  onResetGame: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val scrollState = rememberScrollState()
   var soundFxEnabled by remember { mutableStateOf(true) }
   var hapticEnabled by remember { mutableStateOf(true) }
+  var showResetDialog by remember { mutableStateOf(false) }
 
   Column(
     modifier = modifier
@@ -379,6 +385,92 @@ fun EmpireScreen(
           )
         }
       }
+    }
+
+    // Reset Game / Fresh Start Card
+    Card(
+      modifier = Modifier.fillMaxWidth(),
+      shape = RoundedCornerShape(12.dp),
+      colors = CardDefaults.cardColors(containerColor = SurfaceContainer),
+      elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+      ) {
+        Text(
+          text = "GAME DATA MANAGEMENT",
+          style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          fontSize = 11.sp
+        )
+        Text(
+          text = "Want to restart your syndicate journey? Reset your game progress to Level 1 with 0 NIP.",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          fontSize = 12.sp
+        )
+        OutlinedButton(
+          onClick = { showResetDialog = true },
+          modifier = Modifier.fillMaxWidth().testTag("reset_game_button"),
+          colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.error
+          ),
+          border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
+          shape = RoundedCornerShape(8.dp)
+        ) {
+          Icon(
+            imageVector = Icons.Default.DeleteForever,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(16.dp)
+          )
+          Spacer(modifier = Modifier.width(6.dp))
+          Text(
+            text = "START FRESH GAME (RESET ALL)",
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp
+          )
+        }
+      }
+    }
+
+    if (showResetDialog) {
+      AlertDialog(
+        onDismissRequest = { showResetDialog = false },
+        title = {
+          Text(
+            text = "Reset Game to Fresh Start?",
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+          )
+        },
+        text = {
+          Text(
+            text = "This will wipe all catnip, operative hires, and territory progress. You will start as a Level 1 Street Rookie with 0 NIP. Are you sure?",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+        },
+        confirmButton = {
+          Button(
+            onClick = {
+              showResetDialog = false
+              onResetGame()
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+          ) {
+            Text("Yes, Reset Game", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold)
+          }
+        },
+        dismissButton = {
+          TextButton(onClick = { showResetDialog = false }) {
+            Text("Cancel")
+          }
+        },
+        containerColor = SurfaceContainerHigh
+      )
     }
 
     Spacer(modifier = Modifier.height(16.dp))

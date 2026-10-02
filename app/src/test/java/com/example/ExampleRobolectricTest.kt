@@ -2,7 +2,9 @@ package com.example
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.example.data.GameRepository
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -18,4 +20,41 @@ class ExampleRobolectricTest {
     val appName = context.getString(R.string.app_name)
     assertEquals("Catnip Cartel", appName)
   }
+
+  @Test
+  fun `fresh game starts at level 1 with zero nip`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val repository = GameRepository(context)
+    val state = repository.state.value
+
+    assertEquals(0.0, state.nipBalance, 0.01)
+    assertEquals(1, state.bossLevel)
+    assertEquals("STREET ROOKIE", state.bossTitle)
+    assertEquals(0L, state.streetCredXp)
+  }
+
+  @Test
+  fun `tapping avatar increases nip from zero`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val repository = GameRepository(context)
+    
+    val gained = repository.onAvatarTapped()
+    assertTrue(gained >= 1L)
+    assertTrue(repository.state.value.nipBalance >= 1.0)
+  }
+
+  @Test
+  fun `reset game restores clean fresh state`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val repository = GameRepository(context)
+    
+    repository.onAvatarTapped()
+    repository.resetGame()
+    
+    val state = repository.state.value
+    assertEquals(0.0, state.nipBalance, 0.01)
+    assertEquals(1, state.bossLevel)
+    assertEquals("STREET ROOKIE", state.bossTitle)
+  }
 }
+
