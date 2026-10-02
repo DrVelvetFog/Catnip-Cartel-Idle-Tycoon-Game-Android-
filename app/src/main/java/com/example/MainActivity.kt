@@ -30,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,8 +45,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.GameRepository
+import com.example.ui.audio.MusicManager
 import com.example.ui.components.BossProfileDialog
 import com.example.ui.components.CartelBottomNav
 import com.example.ui.components.CartelTab
@@ -85,6 +90,41 @@ fun CatnipCartelApp(repository: GameRepository) {
 
   val prefs = remember { context.getSharedPreferences("catnip_cartel_save", Context.MODE_PRIVATE) }
   var showTutorial by remember { mutableStateOf(!prefs.getBoolean("tutorial_seen", false)) }
+
+  val musicManager = remember { MusicManager(context.applicationContext) }
+
+  val lifecycleOwner = LocalLifecycleOwner.current
+  DisposableEffect(lifecycleOwner) {
+    val observer = LifecycleEventObserver { _, event ->
+      when (event) {
+        Lifecycle.Event.ON_RESUME -> musicManager.resume()
+        Lifecycle.Event.ON_PAUSE -> musicManager.pause()
+        Lifecycle.Event.ON_DESTROY -> musicManager.release()
+        else -> {}
+      }
+    }
+    lifecycleOwner.lifecycle.addObserver(observer)
+    onDispose {
+      lifecycleOwner.lifecycle.removeObserver(observer)
+      musicManager.release()
+    }
+  }
+
+  // Switch between gameplay loop and raid stinger
+  LaunchedEffect(state.isRaidActive) {
+    if (state.isRaidActive) {
+      musicManager.playRaidStinger()
+    } else {
+      musicManager.resumeAfterRaid()
+    }
+  }
+
+  // Play gameplay loop when game is active (after tutorial)
+  LaunchedEffect(showTutorial) {
+    if (!showTutorial) {
+      musicManager.playGameplay()
+    }
+  }
 
   var currentTab by remember { mutableStateOf(CartelTab.HUSTLE) }
   var isRaidScreenOpen by remember { mutableStateOf(false) }
@@ -278,6 +318,10 @@ fun CatnipCartelApp(repository: GameRepository) {
                   triggerHaptic()
                   repository.resetGame()
                   showTutorial = true
+                },
+                isMusicEnabled = !musicManager.isMuted(),
+                onToggleMusic = { enabled ->
+                  musicManager.setMuted(!enabled)
                 }
               )
             }

@@ -72,5 +72,20 @@ class ExampleRobolectricTest {
     val afterSeen = prefs.getBoolean("tutorial_seen", false)
     assertEquals(true, afterSeen)
   }
+
+  @Test
+  fun `raw audio resources are present and resolvable`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val gameplayId = context.resources.getIdentifier("gameplay_loop", "raw", context.packageName)
+    val stingerId = context.resources.getIdentifier("raid_stinger", "raw", context.packageName)
+
+    assertTrue("gameplay_loop raw resource must exist", gameplayId != 0)
+    assertTrue("raid_stinger raw resource must exist", stingerId != 0)
+
+    val musicManager = com.example.ui.audio.MusicManager(context)
+    assertEquals(false, musicManager.isMuted())
+    musicManager.setMuted(true)
+    assertEquals(true, musicManager.isMuted())
+  }
 }
 

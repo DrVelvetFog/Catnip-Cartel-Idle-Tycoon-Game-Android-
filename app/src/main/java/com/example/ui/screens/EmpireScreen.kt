@@ -80,10 +80,12 @@ fun EmpireScreen(
   tapPower: Long,
   onPrestigeLaunder: () -> Unit,
   onResetGame: () -> Unit = {},
+  isMusicEnabled: Boolean = true,
+  onToggleMusic: (Boolean) -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val scrollState = rememberScrollState()
-  var soundFxEnabled by remember { mutableStateOf(true) }
+  var soundFxEnabled by remember(isMusicEnabled) { mutableStateOf(isMusicEnabled) }
   var hapticEnabled by remember { mutableStateOf(true) }
   var showResetDialog by remember { mutableStateOf(false) }
 
@@ -347,7 +349,10 @@ fun EmpireScreen(
           }
           Switch(
             checked = soundFxEnabled,
-            onCheckedChange = { soundFxEnabled = it },
+            onCheckedChange = {
+              soundFxEnabled = it
+              onToggleMusic(it)
+            },
             colors = SwitchDefaults.colors(
               checkedThumbColor = PrimaryNeon,
               checkedTrackColor = OnPrimaryContainer
