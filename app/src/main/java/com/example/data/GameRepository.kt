@@ -259,13 +259,51 @@ class GameRepository(context: Context) {
       try {
         prefs.getFloat(key, def.toFloat()).toDouble()
       } catch (_: ClassCastException) {
-        def
+        try {
+          prefs.getInt(key, def.toInt()).toDouble()
+        } catch (_: ClassCastException) {
+          def
+        }
+      }
+    }
+  }
+
+  private fun getLongSafe(key: String, def: Long): Long {
+    if (!prefs.contains(key)) return def
+    return try {
+      prefs.getLong(key, def)
+    } catch (_: ClassCastException) {
+      try {
+        prefs.getInt(key, def.toInt()).toLong()
+      } catch (_: ClassCastException) {
+        try {
+          prefs.getFloat(key, def.toFloat()).toLong()
+        } catch (_: ClassCastException) {
+          def
+        }
+      }
+    }
+  }
+
+  private fun getIntSafe(key: String, def: Int): Int {
+    if (!prefs.contains(key)) return def
+    return try {
+      prefs.getInt(key, def)
+    } catch (_: ClassCastException) {
+      try {
+        prefs.getLong(key, def.toLong()).toInt()
+      } catch (_: ClassCastException) {
+        try {
+          prefs.getFloat(key, def.toFloat()).toInt()
+        } catch (_: ClassCastException) {
+          def
+        }
       }
     }
   }
 
   private fun loadInitialState(): CartelGameState = try {
-    if (prefs.getInt("save_version", 0) < Economy.SAVE_VERSION) {
+    if (getIntSafe("save_version", 0) < Economy.SAVE_VERSION) {
       // Fresh start: ignore any legacy demo-state keys.
       CartelGameState(
         operatives = defaultOperatives(),
@@ -276,7 +314,7 @@ class GameRepository(context: Context) {
       )
     } else {
       val ops = defaultOperatives().map { op ->
-        val owned = prefs.getInt("op_owned_${op.id}", 0)
+        val owned = getIntSafe("op_owned_${op.id}", 0)
         val locked = if (op.id == "the_plug") prefs.getBoolean("op_locked_the_plug", true) else false
         op.copy(owned = owned, level = owned, isLocked = locked)
       }
@@ -295,7 +333,7 @@ class GameRepository(context: Context) {
         }
       }
       val forms = defaultFormulas().map { f ->
-        f.copy(level = prefs.getInt("form_lvl_${f.id}", 0))
+        f.copy(level = getIntSafe("form_lvl_${f.id}", 0))
       }
       val techs = defaultTechs().map { t ->
         t.copy(isInstalled = prefs.getBoolean("tech_${t.id}", false))
@@ -306,10 +344,10 @@ class GameRepository(context: Context) {
         nipBalance = getDouble("nip_balance", 0.0),
         bossLevel = bossLvl,
         bossTitle = getBossTitle(bossLvl),
-        streetCredXp = prefs.getLong("street_cred_xp", 0L),
+        streetCredXp = getLongSafe("street_cred_xp", 0L),
         totalLifetimeNip = lifetime,
-        zoomiesCharges = prefs.getInt("zoomies_charges", 1),
-        prestigeLives = prefs.getInt("prestige_lives", 0),
+        zoomiesCharges = getIntSafe("zoomies_charges", 1),
+        prestigeLives = getIntSafe("prestige_lives", 0),
         musicEnabled = prefs.getBoolean("music_enabled", true),
         operatives = ops,
         districts = dists,
@@ -354,7 +392,7 @@ class GameRepository(context: Context) {
   }
 
   private fun grantOfflineEarnings() {
-    val lastSeen = prefs.getLong("last_seen", 0L)
+    val lastSeen = getLongSafe("last_seen", 0L)
     if (lastSeen <= 0L) return
     val now = System.currentTimeMillis() / 1000L
     val elapsed = (now - lastSeen).coerceIn(0L, Economy.OFFLINE_CAP_S)
