@@ -1,207 +1,100 @@
 package com.example.ui.audio
 
 import android.content.Context
-import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.util.Log
 
+/**
+ * Background music for Catnip Cartel Tycoon.
+ *
+ * Track slots (all optional except the title theme):
+ *  - title    -> R.raw.catnip_cartel   (ships with the app: the vocal theme song)
+ *  - loop     -> res/raw/gameplay_loop.m4a  (seamless instrumental loop)
+ *  - raid     -> res/raw/raid_stinger.m4a   (30s Animal Control tension cue)
+ *  - fanfare  -> R.raw.trunk_bump      (ships with the app: Nine Lives prestige fanfare)
+ *
+ * Missing future tracks are resolved to 0 and skipped gracefully, so dropping
+ * a new file into res/raw is all it takes to activate that slot.
+ */
 class MusicManager(private val context: Context) {
-  private val tag = "MusicManager"
 
-  private var gameplayPlayer: MediaPlayer? = null
-  private var stingerPlayer: MediaPlayer? = null
-  private var isMuted: Boolean = false
-  private var isRaidMode: Boolean = false
+  private var player: MediaPlayer? = null
+  private var currentResId: Int = 0
+  var enabled: Boolean = true
+    private set
 
-  init {
-    val prefs = context.getSharedPreferences("catnip_cartel_save", Context.MODE_PRIVATE)
-    isMuted = !prefs.getBoolean("music_enabled", true)
+  private fun resId(name: String): Int =
+    context.resources.getIdentifier(name, "raw", context.packageName)
+
+  /** The in-game loop: gameplay_loop when present, otherwise the title theme. */
+  private fun loopResId(): Int {
+    val loop = resId("gameplay_loop")
+    return if (loop != 0) loop else com.example.R.raw.catnip_cartel
   }
 
-  fun setMuted(muted: Boolean) {
-    isMuted = muted
-    val prefs = context.getSharedPreferences("catnip_cartel_save", Context.MODE_PRIVATE)
-    prefs.edit().putBoolean("music_enabled", !muted).apply()
-
-    if (muted) {
-      gameplayPlayer?.pause()
-      stingerPlayer?.pause()
-    } else {
-      if (isRaidMode) {
-        if (stingerPlayer != null && !stingerPlayer!!.isPlaying) {
-          try { stingerPlayer?.start() } catch (e: Exception) { Log.e(tag, "Error resuming stinger", e) }
-        } else {
-          playRaidStinger()
-        }
-      } else {
-        if (gameplayPlayer != null && !gameplayPlayer!!.isPlaying) {
-          try { gameplayPlayer?.start() } catch (e: Exception) { Log.e(tag, "Error resuming gameplay", e) }
-        } else {
-          playGameplay()
-        }
-      }
-    }
-  }
-
-  fun isMuted(): Boolean = isMuted
-
-  /**
-   * Automatically uses gameplay_loop from res/raw when present (resolved dynamically via getIdentifier)
-   */
-  fun playGameplay() {
-    if (isMuted) return
-    isRaidMode = false
-
-    // Stop and release stinger if active
+  private fun play(resId: Int, loop: Boolean, volume: Float = 0.55f, onDone: (() -> Unit)? = null) {
+    if (!enabled || resId == 0) return
+    if (currentResId == resId && player?.isPlaying == true) return
+    stop()
     try {
-      stingerPlayer?.stop()
-      stingerPlayer?.release()
-    } catch (_: Exception) {}
-    stingerPlayer = null
-
-    // If gameplay player is already running, continue
-    if (gameplayPlayer != null && gameplayPlayer!!.isPlaying) return
-
-    val resId = context.resources.getIdentifier("gameplay_loop", "raw", context.packageName)
-    if (resId != 0) {
-      try {
-        gameplayPlayer?.release()
-        gameplayPlayer = MediaPlayer().apply {
-          setAudioAttributes(
-            AudioAttributes.Builder()
-              .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-              .setUsage(AudioAttributes.USAGE_GAME)
-              .build()
-          )
-          val afd = context.resources.openRawResourceFd(resId)
-          if (afd != null) {
-            setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-            afd.close()
-            isLooping = true
-            setVolume(0.7f, 0.7f)
-            prepare()
-            start()
-          }
-        }
-        Log.d(tag, "Gameplay loop started successfully from raw/gameplay_loop")
-      } catch (e: Exception) {
-        Log.e(tag, "Failed to start gameplay_loop media player", e)
+      player = MediaPlayer.create(context, resId)?.apply {
+        isLooping = loop
+        setVolume(volume, volume)
+        if (!loop) setOnCompletionListener { onDone?.invoke() }
+        start()
       }
-    } else {
-      Log.d(tag, "No gameplay_loop resource found in res/raw (slot empty)")
+      currentResId = resId
+    } catch (_: Exception) {
+      player = null
+      currentResId = 0
     }
   }
 
-  /**
-   * Plays raid_stinger one-shot when a raid starts. When the stinger completes or
-   * when resumeAfterRaid() is called, returns to the gameplay loop.
-   */
+  /** Title/menu music: the vocal CATNIP CARTEL theme. */
+  fun playTitle() = play(com.example.R.raw.catnip_cartel, loop = true)
+
+  /** Gameplay music: seamless loop when present, title theme otherwise. */
+  fun playGameplay() = play(loopResId(), loop = true, volume = 0.45f)
+
+  /** Raid stinger: one-shot tension cue when present; ignored otherwise. */
   fun playRaidStinger() {
-    isRaidMode = true
-
-    // Pause gameplay loop while raid is active
-    try {
-      if (gameplayPlayer != null && gameplayPlayer!!.isPlaying) {
-        gameplayPlayer?.pause()
-      }
-    } catch (_: Exception) {}
-
-    if (isMuted) return
-
-    val resId = context.resources.getIdentifier("raid_stinger", "raw", context.packageName)
-    if (resId != 0) {
-      try {
-        stingerPlayer?.release()
-        stingerPlayer = MediaPlayer().apply {
-          setAudioAttributes(
-            AudioAttributes.Builder()
-              .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-              .setUsage(AudioAttributes.USAGE_GAME)
-              .build()
-          )
-          val afd = context.resources.openRawResourceFd(resId)
-          if (afd != null) {
-            setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-            afd.close()
-            isLooping = false
-            setVolume(0.9f, 0.9f)
-            setOnCompletionListener {
-              // When one-shot stinger finishes, return to gameplay loop if raid mode ended
-              if (!isRaidMode) {
-                resumeAfterRaid()
-              }
-            }
-            prepare()
-            start()
-          }
-        }
-        Log.d(tag, "Raid stinger started successfully from raw/raid_stinger")
-      } catch (e: Exception) {
-        Log.e(tag, "Failed to start raid_stinger media player", e)
-      }
-    } else {
-      Log.d(tag, "No raid_stinger resource found in res/raw")
-    }
+    val stinger = resId("raid_stinger")
+    if (stinger != 0) play(stinger, loop = false, volume = 0.7f)
   }
 
-  /**
-   * Resumes gameplay loop after raid ends (won, lost, or dismissed)
-   */
-  fun resumeAfterRaid() {
-    isRaidMode = false
+  /** Prestige fanfare: TRUNK BUMP plays once when a Nine Lives prestige lands. */
+  fun playPrestigeFanfare() {
+    val fanfare = resId("trunk_bump")
+    if (fanfare != 0) play(fanfare, loop = false, volume = 0.8f, onDone = { playGameplay() })
+  }
 
-    try {
-      stingerPlayer?.stop()
-      stingerPlayer?.release()
-    } catch (_: Exception) {}
-    stingerPlayer = null
+  /** Back to the loop after a raid ends. */
+  fun resumeAfterRaid() = playGameplay()
 
-    if (isMuted) return
-
-    if (gameplayPlayer != null) {
-      try {
-        gameplayPlayer?.start()
-      } catch (e: Exception) {
-        playGameplay()
-      }
-    } else {
-      playGameplay()
-    }
+  fun setEnabled(on: Boolean) {
+    enabled = on
+    if (!on) stop() else playGameplay()
   }
 
   fun pause() {
-    try {
-      if (gameplayPlayer?.isPlaying == true) gameplayPlayer?.pause()
-      if (stingerPlayer?.isPlaying == true) stingerPlayer?.pause()
-    } catch (_: Exception) {}
+    try { player?.pause() } catch (_: Exception) {}
   }
 
   fun resume() {
-    if (isMuted) return
+    if (!enabled) return
     try {
-      if (isRaidMode) {
-        stingerPlayer?.start()
-      } else {
-        if (gameplayPlayer != null && !gameplayPlayer!!.isPlaying) {
-          gameplayPlayer?.start()
-        } else if (gameplayPlayer == null) {
-          playGameplay()
-        }
-      }
+      if (currentResId != 0 && player?.isPlaying == false) player?.start()
+      else if (currentResId == 0) playGameplay()
     } catch (_: Exception) {}
   }
 
-  fun release() {
+  fun stop() {
     try {
-      gameplayPlayer?.stop()
-      gameplayPlayer?.release()
+      player?.stop()
+      player?.release()
     } catch (_: Exception) {}
-    gameplayPlayer = null
-
-    try {
-      stingerPlayer?.stop()
-      stingerPlayer?.release()
-    } catch (_: Exception) {}
-    stingerPlayer = null
+    player = null
+    currentResId = 0
   }
+
+  fun release() = stop()
 }

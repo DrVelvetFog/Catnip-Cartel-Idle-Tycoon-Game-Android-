@@ -30,7 +30,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,9 +44,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.GameRepository
 import com.example.ui.audio.MusicManager
@@ -69,62 +65,46 @@ import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
   private lateinit var repository: GameRepository
+  private lateinit var music: MusicManager
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
     repository = GameRepository(applicationContext)
+    music = MusicManager(applicationContext).apply {
+      setEnabled(repository.state.value.musicEnabled)
+    }
 
     setContent {
       CatnipCartelTheme {
-        CatnipCartelApp(repository = repository)
+        CatnipCartelApp(repository = repository, music = music)
       }
     }
+  }
+
+  override fun onPause() {
+    super.onPause()
+    if (::music.isInitialized) music.pause()
+  }
+
+  override fun onResume() {
+    super.onResume()
+    if (::music.isInitialized) music.resume()
+  }
+
+  override fun onDestroy() {
+    if (::music.isInitialized) music.release()
+    super.onDestroy()
   }
 }
 
 @Composable
-fun CatnipCartelApp(repository: GameRepository) {
+fun CatnipCartelApp(repository: GameRepository, music: MusicManager) {
   val context = LocalContext.current
   val state by repository.state.collectAsStateWithLifecycle()
 
   val prefs = remember { context.getSharedPreferences("catnip_cartel_save", Context.MODE_PRIVATE) }
   var showTutorial by remember { mutableStateOf(!prefs.getBoolean("tutorial_seen", false)) }
-
-  val musicManager = remember { MusicManager(context.applicationContext) }
-
-  val lifecycleOwner = LocalLifecycleOwner.current
-  DisposableEffect(lifecycleOwner) {
-    val observer = LifecycleEventObserver { _, event ->
-      when (event) {
-        Lifecycle.Event.ON_RESUME -> musicManager.resume()
-        Lifecycle.Event.ON_PAUSE -> musicManager.pause()
-        Lifecycle.Event.ON_DESTROY -> musicManager.release()
-        else -> {}
-      }
-    }
-    lifecycleOwner.lifecycle.addObserver(observer)
-    onDispose {
-      lifecycleOwner.lifecycle.removeObserver(observer)
-      musicManager.release()
-    }
-  }
-
-  // Switch between gameplay loop and raid stinger
-  LaunchedEffect(state.isRaidActive) {
-    if (state.isRaidActive) {
-      musicManager.playRaidStinger()
-    } else {
-      musicManager.resumeAfterRaid()
-    }
-  }
-
-  // Play gameplay loop when game is active (after tutorial)
-  LaunchedEffect(showTutorial) {
-    if (!showTutorial) {
-      musicManager.playGameplay()
-    }
-  }
 
   var currentTab by remember { mutableStateOf(CartelTab.HUSTLE) }
   var isRaidScreenOpen by remember { mutableStateOf(false) }
@@ -156,6 +136,18 @@ fun CatnipCartelApp(repository: GameRepository) {
       delay(2000)
       repository.clearToast()
     }
+  }
+
+  // Raid music: stinger on raid start, back to the loop when it ends
+  LaunchedEffect(state.isRaidActive) {
+    if (state.isRaidActive) music.playRaidStinger() else music.resumeAfterRaid()
+  }
+
+  // Prestige fanfare: TRUNK BUMP when a new life is earned (not on fresh launch)
+  var lastLives by remember { mutableStateOf(state.prestigeLives) }
+  LaunchedEffect(state.prestigeLives) {
+    if (state.prestigeLives > lastLives) music.playPrestigeFanfare()
+    lastLives = state.prestigeLives
   }
 
   // Handle back press if inside subscreen or tutorial
@@ -310,18 +302,19 @@ fun CatnipCartelApp(repository: GameRepository) {
                 state = state,
                 passiveRate = passiveRate,
                 tapPower = tapPower,
+                musicEnabled = state.musicEnabled,
+                onToggleMusic = { enabled ->
+                  repository.setMusicEnabled(enabled)
+                  music.setEnabled(enabled)
+                },
                 onPrestigeLaunder = {
                   triggerHaptic()
-                  repository.claimAdDrop()
+                  repository.doPrestige()
                 },
                 onResetGame = {
                   triggerHaptic()
                   repository.resetGame()
                   showTutorial = true
-                },
-                isMusicEnabled = !musicManager.isMuted(),
-                onToggleMusic = { enabled ->
-                  musicManager.setMuted(!enabled)
                 }
               )
             }

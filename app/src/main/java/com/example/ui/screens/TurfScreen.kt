@@ -702,48 +702,50 @@ fun DistrictCard(
           modifier = Modifier.padding(top = 4.dp)
         )
 
-        // Suburbs preview asset if ready to expand
-        if (district.previewImageUrl != null && district.status == DistrictStatus.READY_TO_EXPAND) {
-          Spacer(modifier = Modifier.height(8.dp))
-          Box(
-            modifier = Modifier
-              .fillMaxWidth()
-              .height(86.dp)
-              .clip(RoundedCornerShape(8.dp))
-              .background(SurfaceContainerLowest)
-          ) {
-            AsyncImage(
-              model = district.previewImageUrl,
-              contentDescription = "District preview",
-              contentScale = ContentScale.Crop,
+        // District ready to expand: optional preview image + CLAIM TURF button
+        if (isReady) {
+          if (district.previewImageUrl != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
               modifier = Modifier
-                .fillMaxSize()
-                .alpha(0.65f)
-            )
-            Surface(
-              modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(6.dp),
-              color = SurfaceContainerLowest.copy(alpha = 0.9f),
-              shape = RoundedCornerShape(4.dp)
+                .fillMaxWidth()
+                .height(86.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(SurfaceContainerLowest)
             ) {
-              Row(
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically
+              AsyncImage(
+                model = district.previewImageUrl,
+                contentDescription = "District preview",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                  .fillMaxSize()
+                  .alpha(0.65f)
+              )
+              Surface(
+                modifier = Modifier
+                  .align(Alignment.BottomStart)
+                  .padding(6.dp),
+                color = SurfaceContainerLowest.copy(alpha = 0.9f),
+                shape = RoundedCornerShape(4.dp)
               ) {
-                Icon(
-                  imageVector = Icons.Default.LocationOn,
-                  contentDescription = null,
-                  tint = SecondaryGold,
-                  modifier = Modifier.size(12.dp)
-                )
-                Spacer(modifier = Modifier.width(3.dp))
-                Text(
-                  text = "ESTIMATED TAKEOVER: ${district.takeoverEstimate ?: "12M"}",
-                  style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                  color = MaterialTheme.colorScheme.primary,
-                  fontSize = 9.sp
-                )
+                Row(
+                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = SecondaryGold,
+                    modifier = Modifier.size(12.dp)
+                  )
+                  Spacer(modifier = Modifier.width(3.dp))
+                  Text(
+                    text = "ESTIMATED TAKEOVER: ${district.takeoverEstimate ?: "12M"}",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 9.sp
+                  )
+                }
               }
             }
           }
@@ -791,7 +793,7 @@ fun DistrictCard(
               )
             }
           }
-        } else if (district.perkLabel != null) {
+        } else if (isDominated || isActive) {
           Spacer(modifier = Modifier.height(6.dp))
           Row(
             modifier = Modifier.fillMaxWidth(),
@@ -807,14 +809,14 @@ fun DistrictCard(
               )
               Spacer(modifier = Modifier.width(4.dp))
               Text(
-                text = district.perkLabel,
+                text = district.perkLabel ?: "TURF SECURED",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                 color = PrimaryNeon,
                 fontSize = 10.sp
               )
             }
             Text(
-              text = "+${district.nipPerSec} NIP/s",
+              text = "${district.multiplierLabel} EARNINGS",
               fontFamily = FontFamily.Monospace,
               fontWeight = FontWeight.Bold,
               color = MaterialTheme.colorScheme.primary,

@@ -78,14 +78,13 @@ fun EmpireScreen(
   state: CartelGameState,
   passiveRate: Double,
   tapPower: Long,
+  musicEnabled: Boolean,
+  onToggleMusic: (Boolean) -> Unit,
   onPrestigeLaunder: () -> Unit,
   onResetGame: () -> Unit = {},
-  isMusicEnabled: Boolean = true,
-  onToggleMusic: (Boolean) -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val scrollState = rememberScrollState()
-  var soundFxEnabled by remember(isMusicEnabled) { mutableStateOf(isMusicEnabled) }
   var hapticEnabled by remember { mutableStateOf(true) }
   var showResetDialog by remember { mutableStateOf(false) }
 
@@ -265,7 +264,7 @@ fun EmpireScreen(
             color = PrimaryNeon.copy(alpha = 0.2f)
           ) {
             Text(
-              text = "+50% MULTIPLIER",
+              text = "NINE LIVES: ${state.prestigeLives}/9",
               style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black),
               color = PrimaryNeon,
               fontSize = 9.sp,
@@ -275,7 +274,7 @@ fun EmpireScreen(
         }
 
         Text(
-          text = "Launder your current catnip stash into offshore Swiss cat beds. Resets your balance in exchange for permanent street authority boost.",
+          text = "Nine Lives prestige: at 1,000,000 lifetime nip, reset your empire for a permanent +25% earnings per life — up to 9 lives.",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           fontSize = 11.sp
@@ -305,7 +304,11 @@ fun EmpireScreen(
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
-              text = "LAUNDER & PRESTIGE (+25,000 XP)",
+              text = when {
+                state.prestigeLives >= 9 -> "MAX NINE LIVES — IMMORTAL"
+                state.totalLifetimeNip >= 1000000.0 -> "LAUNDER & PRESTIGE (LIFE ${state.prestigeLives + 1}/9)"
+                else -> "LAUNDER & PRESTIGE (1M LIFETIME REQ.)"
+              },
               style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black),
               fontSize = 12.sp
             )
@@ -341,18 +344,15 @@ fun EmpireScreen(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-              text = "90s Boombox Basslines",
+              text = "Theme Music (Catnip Cartel)",
               style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
               color = MaterialTheme.colorScheme.primary,
               fontSize = 13.sp
             )
           }
           Switch(
-            checked = soundFxEnabled,
-            onCheckedChange = {
-              soundFxEnabled = it
-              onToggleMusic(it)
-            },
+            checked = musicEnabled,
+            onCheckedChange = { onToggleMusic(it) },
             colors = SwitchDefaults.colors(
               checkedThumbColor = PrimaryNeon,
               checkedTrackColor = OnPrimaryContainer
