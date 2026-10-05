@@ -67,6 +67,26 @@ object Economy {
     val n = floor(ln(1.0 + balance * (COST_GROWTH - 1.0) / unit) / ln(COST_GROWTH)).toInt()
     return n.coerceAtLeast(0)
   }
+
+  private val BASE_MILESTONES = intArrayOf(10, 25, 50, 100, 200, 300, 400, 500)
+
+  fun milestonesReached(owned: Int): Int {
+    val baseCount = BASE_MILESTONES.count { it <= owned }
+    val extra = if (owned > 500) (owned - 500) / 100 else 0
+    return baseCount + extra
+  }
+
+  fun operativeMilestoneMultiplier(owned: Int): Double =
+    2.0.pow(milestonesReached(owned))
+
+  fun nextMilestone(owned: Int): Int =
+    BASE_MILESTONES.firstOrNull { it > owned } ?: (((owned / 100) + 1) * 100)
+
+  fun prevMilestone(owned: Int): Int = when {
+    owned < 10 -> 0
+    owned < 500 -> BASE_MILESTONES.last { it <= owned }
+    else -> (owned / 100) * 100
+  }
 }
 
 data class CartelGameState(
@@ -432,9 +452,14 @@ class GameRepository(context: Context) {
     return m
   }
 
+  fun milestonesReached(owned: Int): Int = Economy.milestonesReached(owned)
+
   fun calculatePassiveRate(currentState: CartelGameState): Double {
     var baseRate = 0.0
-    currentState.operatives.forEach { op -> baseRate += op.owned * op.baseProduction }
+    currentState.operatives.forEach { op ->
+      val milestoneMult = 2.0.pow(milestonesReached(op.owned))
+      baseRate += op.owned * op.baseProduction * milestoneMult
+    }
 
     var multiplier = territoryMult(currentState) * prestigeMult(currentState)
     if (currentState.isBoomboxBoostActive) multiplier *= 2.0

@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.CartelGameState
+import com.example.data.Economy
 import com.example.data.Operative
 import com.example.ui.components.formatShortNumber
 import com.example.ui.theme.ErrorContainer
@@ -354,6 +355,13 @@ fun OperativeCard(
               modifier = Modifier.padding(top = 2.dp)
             )
 
+            val milestones = Economy.milestonesReached(operative.owned)
+            val milestoneMult = 2.0.pow(milestones).roundToLong()
+            val nextMilestone = Economy.nextMilestone(operative.owned)
+            val prevMilestone = Economy.prevMilestone(operative.owned)
+            val milestoneProgress = ((operative.owned - prevMilestone).toFloat() /
+              (nextMilestone - prevMilestone).coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
+
             Row(
               modifier = Modifier.padding(top = 5.dp),
               horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -375,11 +383,27 @@ fun OperativeCard(
                   )
                   Spacer(modifier = Modifier.width(3.dp))
                   Text(
-                    text = String.format(Locale.US, "+%.1f Nip/s", operative.baseProduction),
+                    text = String.format(Locale.US, "+%.1f Nip/s", operative.baseProduction * milestoneMult),
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
                     color = PrimaryNeon
+                  )
+                }
+              }
+
+              if (milestoneMult > 1L) {
+                Surface(
+                  shape = RoundedCornerShape(4.dp),
+                  color = SecondaryGold.copy(alpha = 0.2f)
+                ) {
+                  Text(
+                    text = "x$milestoneMult PRODUCTION",
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 10.sp,
+                    color = SecondaryGold,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                   )
                 }
               }
@@ -390,6 +414,49 @@ fun OperativeCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp
               )
+            }
+
+            // Milestone Progress Row + Bar
+            Column(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp)
+            ) {
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Text(
+                  text = "Next x2 at $nextMilestone",
+                  style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                  color = SecondaryGold,
+                  fontSize = 10.sp
+                )
+                Text(
+                  text = "${operative.owned} / $nextMilestone",
+                  fontFamily = FontFamily.Monospace,
+                  fontWeight = FontWeight.Bold,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  fontSize = 10.sp
+                )
+              }
+              Spacer(modifier = Modifier.height(3.dp))
+              Box(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .height(5.dp)
+                  .clip(RoundedCornerShape(3.dp))
+                  .background(SurfaceContainerHighest)
+              ) {
+                Box(
+                  modifier = Modifier
+                    .fillMaxWidth(milestoneProgress)
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(SecondaryGold)
+                )
+              }
             }
           }
         }
