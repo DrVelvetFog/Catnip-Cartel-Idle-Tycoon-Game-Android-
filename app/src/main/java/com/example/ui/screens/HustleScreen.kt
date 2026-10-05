@@ -444,19 +444,35 @@ fun HustleScreen(
                 Spacer(modifier = Modifier.width(6.dp))
                 Surface(
                   shape = RoundedCornerShape(10.dp),
-                  color = if (state.isBoomboxBoostActive) SecondaryGold.copy(alpha = 0.2f) else PrimaryNeon.copy(alpha = 0.2f)
+                  color = when {
+                    state.isBoomboxBoostActive -> SecondaryGold.copy(alpha = 0.2f)
+                    state.boomboxCooldownSeconds > 0 -> SurfaceContainerLowest
+                    else -> PrimaryNeon.copy(alpha = 0.2f)
+                  }
                 ) {
                   Text(
-                    text = if (state.isBoomboxBoostActive) "2X ACTIVE" else "2X READY",
+                    text = when {
+                      state.isBoomboxBoostActive -> "2X ACTIVE"
+                      state.boomboxCooldownSeconds > 0 -> "COOLDOWN"
+                      else -> "2X READY"
+                    },
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = if (state.isBoomboxBoostActive) SecondaryGold else PrimaryNeon,
+                    color = when {
+                      state.isBoomboxBoostActive -> SecondaryGold
+                      state.boomboxCooldownSeconds > 0 -> MaterialTheme.colorScheme.onSurfaceVariant
+                      else -> PrimaryNeon
+                    },
                     fontSize = 9.sp,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                   )
                 }
               }
               Text(
-                text = if (state.isBoomboxBoostActive) "Tape deck spinning 90s basslines" else "Drop beat for 30m 2x production boost",
+                text = when {
+                  state.isBoomboxBoostActive -> "Tape deck spinning 90s basslines"
+                  state.boomboxCooldownSeconds > 0 -> "Boombox cooling down (${state.boomboxCooldownSeconds}s)"
+                  else -> "Drop beat for 30m 2x production boost"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp
@@ -494,19 +510,26 @@ fun HustleScreen(
               }
             }
           } else {
+            val boomboxOnCooldown = state.boomboxCooldownSeconds > 0
             Button(
               onClick = onBoomboxClick,
+              enabled = !boomboxOnCooldown,
               shape = RoundedCornerShape(6.dp),
-              colors = ButtonDefaults.buttonColors(containerColor = SecondaryGold),
+              colors = ButtonDefaults.buttonColors(
+                containerColor = SecondaryGold,
+                disabledContainerColor = SurfaceContainerLowest
+              ),
               contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-              modifier = Modifier.testTag("activate_boombox_button")
+              modifier = Modifier
+                .alpha(if (boomboxOnCooldown) 0.55f else 1f)
+                .testTag("activate_boombox_button")
             ) {
               Text(
-                text = "ACTIVATE",
+                text = if (boomboxOnCooldown) "${state.boomboxCooldownSeconds}s" else "ACTIVATE",
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.Black,
                 fontSize = 11.sp,
-                color = OnSecondary
+                color = if (boomboxOnCooldown) MaterialTheme.colorScheme.onSurfaceVariant else OnSecondary
               )
             }
           }
@@ -752,17 +775,22 @@ fun HustleScreen(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
       ) {
+        val adDropOnCooldown = state.adDropCooldownSeconds > 0
         // Ad Drop Dropbox Button
         Button(
           onClick = onAdDropClick,
+          enabled = !adDropOnCooldown,
           modifier = Modifier
             .weight(1f)
             .height(58.dp)
+            .alpha(if (adDropOnCooldown) 0.55f else 1f)
             .testTag("ad_drop_button"),
           shape = RoundedCornerShape(12.dp),
           colors = ButtonDefaults.buttonColors(
             containerColor = SurfaceContainerHigh,
-            contentColor = MaterialTheme.colorScheme.primary
+            contentColor = MaterialTheme.colorScheme.primary,
+            disabledContainerColor = SurfaceContainerLow,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
           ),
           elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
         ) {
@@ -775,13 +803,13 @@ fun HustleScreen(
               modifier = Modifier
                 .size(28.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(SecondaryGold),
+                .background(if (adDropOnCooldown) SurfaceContainerHighest else SecondaryGold),
               contentAlignment = Alignment.Center
             ) {
               Icon(
                 imageVector = Icons.Default.Videocam,
                 contentDescription = null,
-                tint = OnSecondary,
+                tint = if (adDropOnCooldown) MaterialTheme.colorScheme.onSurfaceVariant else OnSecondary,
                 modifier = Modifier.size(16.dp)
               )
             }
@@ -790,11 +818,11 @@ fun HustleScreen(
               Text(
                 text = "AD DROP DROPBOX",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-                color = SecondaryGold,
+                color = if (adDropOnCooldown) MaterialTheme.colorScheme.onSurfaceVariant else SecondaryGold,
                 fontSize = 10.sp
               )
               Text(
-                text = "+50,000 NIP CRATE",
+                text = if (adDropOnCooldown) "COOLDOWN: ${state.adDropCooldownSeconds}s" else "+50,000 NIP CRATE",
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -804,17 +832,22 @@ fun HustleScreen(
           }
         }
 
+        val overdriveUnavailable = state.isOverdriveActive || state.overdriveCooldownSeconds > 0
         // Super Frenzy Overdrive Trigger
         Button(
           onClick = onOverdriveClick,
+          enabled = !overdriveUnavailable,
           modifier = Modifier
             .weight(1f)
             .height(58.dp)
+            .alpha(if (overdriveUnavailable) 0.55f else 1f)
             .testTag("overdrive_frenzy_button"),
           shape = RoundedCornerShape(12.dp),
           colors = ButtonDefaults.buttonColors(
             containerColor = SecondaryGold,
-            contentColor = OnSecondary
+            contentColor = OnSecondary,
+            disabledContainerColor = SurfaceContainerLow,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
           ),
           elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
         ) {
@@ -833,24 +866,28 @@ fun HustleScreen(
               Icon(
                 imageVector = Icons.Default.ElectricBolt,
                 contentDescription = null,
-                tint = SecondaryGold,
+                tint = if (overdriveUnavailable) MaterialTheme.colorScheme.onSurfaceVariant else SecondaryGold,
                 modifier = Modifier.size(18.dp)
               )
             }
             Spacer(modifier = Modifier.width(8.dp))
             Column {
               Text(
-                text = if (state.isOverdriveActive) "${state.overdriveRemainingSeconds}s BEAT FRENZY" else "OVERDRIVE",
+                text = when {
+                  state.isOverdriveActive -> "${state.overdriveRemainingSeconds}s BEAT FRENZY"
+                  state.overdriveCooldownSeconds > 0 -> "COOLDOWN ${state.overdriveCooldownSeconds}s"
+                  else -> "OVERDRIVE"
+                },
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                color = OnSecondary,
+                color = if (overdriveUnavailable) MaterialTheme.colorScheme.onSurfaceVariant else OnSecondary,
                 fontSize = 13.sp,
                 lineHeight = 15.sp
               )
               Text(
-                text = "30s BEAT FRENZY",
+                text = if (state.overdriveCooldownSeconds > 0) "RECHARGING (${state.overdriveCooldownSeconds}s)" else "30s BEAT FRENZY",
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold,
-                color = OnSecondary.copy(alpha = 0.85f),
+                color = if (overdriveUnavailable) MaterialTheme.colorScheme.onSurfaceVariant else OnSecondary.copy(alpha = 0.85f),
                 fontSize = 9.sp
               )
             }

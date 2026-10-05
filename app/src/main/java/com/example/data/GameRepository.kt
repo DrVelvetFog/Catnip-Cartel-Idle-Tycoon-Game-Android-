@@ -81,8 +81,11 @@ data class CartelGameState(
   val zoomiesRechargeSeconds: Int = Economy.ZOOMIES_RECHARGE_S,
   val isBoomboxBoostActive: Boolean = false,
   val boomboxRemainingSeconds: Int = 0,
+  val boomboxCooldownSeconds: Int = 0,
   val isOverdriveActive: Boolean = false,
   val overdriveRemainingSeconds: Int = 0,
+  val overdriveCooldownSeconds: Int = 0,
+  val adDropCooldownSeconds: Int = 0,
   val buyMultiplier: Int = 1, // 1, 10, 100, 9999 (MAX)
   val operatives: List<Operative> = emptyList(),
   val districts: List<District> = emptyList(),
@@ -492,7 +495,7 @@ class GameRepository(context: Context) {
 
   fun triggerOverdrive() {
     val current = _state.value
-    if (!current.isOverdriveActive) {
+    if (!current.isOverdriveActive && current.overdriveCooldownSeconds == 0) {
       _state.update {
         it.copy(
           isOverdriveActive = true,
@@ -504,10 +507,13 @@ class GameRepository(context: Context) {
   }
 
   fun claimAdDrop() {
+    val current = _state.value
+    if (current.adDropCooldownSeconds != 0) return
     _state.update {
       it.copy(
         nipBalance = it.nipBalance + 50000.0,
         totalLifetimeNip = it.totalLifetimeNip + 50000.0,
+        adDropCooldownSeconds = 300,
         toastMessage = "🎁 AIRDROP CRATE: +50,000 NIP DELIVERED!"
       )
     }
@@ -539,12 +545,15 @@ class GameRepository(context: Context) {
   }
 
   fun activateBoomboxBoost() {
-    _state.update {
-      it.copy(
-        isBoomboxBoostActive = true,
-        boomboxRemainingSeconds = 1800, // 30 minutes
-        toastMessage = "📻 2X BOOMBOX BASSLINE BOOST ACTIVATED!"
-      )
+    val current = _state.value
+    if (!current.isBoomboxBoostActive && current.boomboxCooldownSeconds == 0) {
+      _state.update {
+        it.copy(
+          isBoomboxBoostActive = true,
+          boomboxRemainingSeconds = 1800, // 30 minutes
+          toastMessage = "📻 2X BOOMBOX BASSLINE BOOST ACTIVATED!"
+        )
+      }
     }
   }
 
@@ -724,8 +733,11 @@ class GameRepository(context: Context) {
         zoomiesRechargeSeconds = Economy.ZOOMIES_RECHARGE_S,
         isOverdriveActive = false,
         overdriveRemainingSeconds = 0,
+        overdriveCooldownSeconds = 0,
         isBoomboxBoostActive = false,
         boomboxRemainingSeconds = 0,
+        boomboxCooldownSeconds = 0,
+        adDropCooldownSeconds = 0,
         operatives = defaultOperatives(),
         districts = defaultDistricts(),
         productFormulas = defaultFormulas(),
@@ -848,14 +860,29 @@ class GameRepository(context: Context) {
               val left = next.overdriveRemainingSeconds - 1
               next = next.copy(
                 isOverdriveActive = left > 0,
-                overdriveRemainingSeconds = left.coerceAtLeast(0)
+                overdriveRemainingSeconds = left.coerceAtLeast(0),
+                overdriveCooldownSeconds = if (left <= 0) 120 else next.overdriveCooldownSeconds
+              )
+            } else if (next.overdriveCooldownSeconds > 0) {
+              next = next.copy(
+                overdriveCooldownSeconds = (next.overdriveCooldownSeconds - 1).coerceAtLeast(0)
               )
             }
             if (next.isBoomboxBoostActive) {
               val left = next.boomboxRemainingSeconds - 1
               next = next.copy(
                 isBoomboxBoostActive = left > 0,
-                boomboxRemainingSeconds = left.coerceAtLeast(0)
+                boomboxRemainingSeconds = left.coerceAtLeast(0),
+                boomboxCooldownSeconds = if (left <= 0) 300 else next.boomboxCooldownSeconds
+              )
+            } else if (next.boomboxCooldownSeconds > 0) {
+              next = next.copy(
+                boomboxCooldownSeconds = (next.boomboxCooldownSeconds - 1).coerceAtLeast(0)
+              )
+            }
+            if (next.adDropCooldownSeconds > 0) {
+              next = next.copy(
+                adDropCooldownSeconds = (next.adDropCooldownSeconds - 1).coerceAtLeast(0)
               )
             }
 
